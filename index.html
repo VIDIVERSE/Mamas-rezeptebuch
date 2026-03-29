@@ -556,7 +556,155 @@
     margin-left: 6px;
   }
 
+  /* CONFIRM POPUP */
+  .confirm-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(44,26,14,0.55);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .confirm-overlay.open { display: flex; }
+  .confirm-box {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 26px 22px 20px;
+    width: 100%;
+    max-width: 320px;
+    box-shadow: 0 8px 40px rgba(44,26,14,0.2);
+  }
+  .confirm-msg {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    text-align: center;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  .confirm-btns {
+    display: flex;
+    gap: 10px;
+  }
+  .confirm-cancel {
+    flex: 1;
+    padding: 13px;
+    border: 2px solid var(--warm);
+    border-radius: 12px;
+    background: transparent;
+    font-family: 'Lato', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .confirm-ok {
+    flex: 1;
+    padding: 13px;
+    border: none;
+    border-radius: 12px;
+    background: #c0392b;
+    color: white;
+    font-family: 'Lato', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
   hr { border: none; border-top: 1.5px solid var(--warm); margin: 18px 0; }
+
+  /* SEARCH */
+  .search-wrap {
+    position: relative;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+  }
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    font-size: 1rem;
+    pointer-events: none;
+  }
+  .search-input {
+    width: 100%;
+    padding: 13px 40px 13px 40px;
+    border: 2px solid var(--warm);
+    border-radius: 50px;
+    font-family: 'Lato', sans-serif;
+    font-size: 1rem;
+    color: var(--text);
+    background: var(--white);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-clear {
+    position: absolute;
+    right: 12px;
+    background: var(--warm);
+    border: none;
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  /* CARD BUTTONS */
+  .card-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 4px;
+  }
+  .card-action-btn {
+    background: rgba(255,255,255,0.92);
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.12);
+  }
+
+  /* EDIT MODAL */
+  .edit-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(44,26,14,0.6);
+    z-index: 300;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .edit-modal-overlay.open { display: flex; }
+  .edit-modal {
+    background: var(--cream);
+    border-radius: 24px 24px 0 0;
+    width: 100%;
+    max-width: 430px;
+    max-height: 92vh;
+    overflow-y: auto;
+    padding: 20px 18px 40px;
+    box-shadow: 0 -4px 30px rgba(44,26,14,0.2);
+  }
+  .edit-modal-handle {
+    width: 40px;
+    height: 4px;
+    background: var(--warm);
+    border-radius: 2px;
+    margin: 0 auto 18px;
+  }
 </style>
 </head>
 <body>
@@ -583,6 +731,11 @@
 
 <!-- ========== REZEPTE SCREEN ========== -->
 <div id="screen-rezepte" class="screen active">
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" class="search-input" placeholder="Rezept suchen…" oninput="renderRecipes()">
+    <button class="search-clear" id="searchClear" onclick="clearSearch()" style="display:none">✕</button>
+  </div>
   <div class="category-filter" id="categoryFilter"></div>
   <div class="recipe-grid" id="recipeGrid"></div>
   <div class="empty-state" id="emptyState" style="display:none">
@@ -690,6 +843,59 @@
   <div class="modal" id="modalContent">
     <div class="modal-handle"></div>
     <div id="modalBody"></div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="edit-modal-overlay" id="editModalOverlay">
+  <div class="edit-modal">
+    <div class="edit-modal-handle"></div>
+    <div class="form-title">✏️ Rezept bearbeiten</div>
+
+    <div class="field">
+      <label>📝 Name des Rezepts *</label>
+      <input type="text" id="editName" placeholder="z.B. Mamas Apfelkuchen">
+    </div>
+
+    <div class="field">
+      <label>📸 Foto</label>
+      <div class="img-upload-area" style="border-color:var(--accent)">
+        <input type="file" accept="image/*" id="editImageInput" onchange="handleEditImage(event)">
+        <div class="upload-icon">📷</div>
+        <p id="editImgLabel"><strong>Foto antippen</strong><br>oder aus Galerie wählen</p>
+      </div>
+      <img id="editImagePreview" class="preview-img" style="display:none">
+      <button id="editRemovePhoto" onclick="removeEditPhoto()" style="display:none;margin-top:8px;width:100%;padding:10px;background:transparent;border:2px solid var(--muted);border-radius:12px;color:var(--muted);font-family:Lato,sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer">🗑️ Foto entfernen</button>
+    </div>
+
+    <div class="field">
+      <label>🔗 Link zum Rezept</label>
+      <input type="url" id="editLink" placeholder="https://www.chefkoch.de/...">
+    </div>
+
+    <div class="field">
+      <label>📋 Notizen</label>
+      <textarea id="editNotes" placeholder="z.B. Zucker halbieren, ohne Nüsse..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>🏷️ Kategorien</label>
+      <div class="cat-select-grid" id="editCatGrid"></div>
+    </div>
+
+    <button class="btn-primary" onclick="saveEdit()">💾 Änderungen speichern</button>
+    <button class="btn-secondary" onclick="closeEditModal()">✖ Abbrechen</button>
+  </div>
+</div>
+
+<!-- CONFIRM POPUP -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-btns">
+      <button class="confirm-cancel" onclick="closeConfirm()">Abbrechen</button>
+      <button class="confirm-ok" id="confirmOkBtn">Löschen</button>
+    </div>
   </div>
 </div>
 
@@ -824,17 +1030,31 @@ function clearForm() {
 function renderRecipes() {
   updateHeader();
   renderFilterChips();
-  const grid = document.getElementById('recipeGrid');
+  const grid  = document.getElementById('recipeGrid');
   const empty = document.getElementById('emptyState');
+  const query = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+
+  // show/hide clear button
+  document.getElementById('searchClear').style.display = query ? 'flex' : 'none';
 
   let filtered = activeFilter === 'all'
     ? recipes
     : recipes.filter(r => r.cats && r.cats.includes(activeFilter));
 
+  if (query) {
+    filtered = filtered.filter(r =>
+      r.name.toLowerCase().includes(query) ||
+      (r.notes && r.notes.toLowerCase().includes(query))
+    );
+  }
+
   if (filtered.length === 0) {
     grid.innerHTML = '';
     empty.style.display = 'block';
-    if (recipes.length > 0 && activeFilter !== 'all') {
+    if (query) {
+      empty.querySelector('h3').textContent = 'Nichts gefunden';
+      empty.querySelector('p').textContent = `Kein Rezept passt zu „${query}".`;
+    } else if (recipes.length > 0 && activeFilter !== 'all') {
       empty.querySelector('h3').textContent = 'Keine Rezepte hier';
       empty.querySelector('p').textContent = 'In dieser Kategorie sind noch keine Rezepte.';
     } else {
@@ -863,9 +1083,18 @@ function renderRecipes() {
           <div class="recipe-cats">${cats}</div>
           ${r.link ? `<span class="recipe-link">${r.link.replace(/^https?:\/\//, '').substring(0,35)}…</span>` : ''}
         </div>
-        <button class="delete-btn" onclick="event.stopPropagation(); deleteRecipe('${r.id}')">🗑️</button>
+        <div class="card-actions">
+          <button class="card-action-btn" title="Bearbeiten" onclick="event.stopPropagation(); openEditModal('${r.id}')">✏️</button>
+          <button class="card-action-btn" title="Löschen" onclick="event.stopPropagation(); deleteRecipe('${r.id}')">🗑️</button>
+        </div>
       </div>`;
   }).join('');
+}
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchClear').style.display = 'none';
+  renderRecipes();
 }
 
 function renderFilterChips() {
@@ -885,11 +1114,14 @@ function setFilter(id) {
 }
 
 function deleteRecipe(id) {
-  if (!confirm('Rezept löschen?')) return;
-  recipes = recipes.filter(r => r.id !== id);
-  save();
-  renderRecipes();
-  toast('🗑️ Gelöscht');
+  const r = recipes.find(x => x.id === id);
+  if (!r) return;
+  showConfirm(`„${r.name}" wirklich löschen?`, () => {
+    recipes = recipes.filter(x => x.id !== id);
+    save();
+    renderRecipes();
+    toast('🗑️ Gelöscht');
+  });
 }
 
 function updateHeader() {
@@ -979,12 +1211,14 @@ function addCategory() {
 }
 
 function deleteCategory(id) {
-  if (!confirm('Kategorie löschen?')) return;
-  categories = categories.filter(c => c.id !== id);
-  recipes.forEach(r => { r.cats = (r.cats || []).filter(cid => cid !== id); });
-  save();
-  renderCategories();
-  toast('🗑️ Kategorie gelöscht');
+  const c = categories.find(x => x.id === id);
+  showConfirm(`Kategorie „${c ? c.name : ''}" löschen?`, () => {
+    categories = categories.filter(x => x.id !== id);
+    recipes.forEach(r => { r.cats = (r.cats || []).filter(cid => cid !== id); });
+    save();
+    renderCategories();
+    toast('🗑️ Kategorie gelöscht');
+  });
 }
 
 // ===== EXPORT =====
@@ -1081,6 +1315,119 @@ function renderDataStats() {
     🔗 <strong>${withLinks}</strong> Rezepte mit Link<br>
     📅 Letztes Backup: <strong>${localStorage.getItem('lastBackup') || 'noch keines'}</strong>
   `;
+}
+
+// ===== CONFIRM POPUP =====
+let confirmCallback = null;
+function showConfirm(msg, onOk) {
+  confirmCallback = onOk;
+  document.getElementById('confirmMsg').textContent = msg;
+  document.getElementById('confirmOkBtn').onclick = () => { closeConfirm(); onOk(); };
+  document.getElementById('confirmOverlay').classList.add('open');
+}
+function closeConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('open');
+  confirmCallback = null;
+}
+
+// ===== EDIT MODAL =====
+let editingId   = null;
+let editImgData = null;
+
+function openEditModal(id) {
+  const r = recipes.find(x => x.id === id);
+  if (!r) return;
+  editingId   = id;
+  editImgData = r.image || null;
+
+  document.getElementById('editName').value  = r.name;
+  document.getElementById('editLink').value  = r.link  || '';
+  document.getElementById('editNotes').value = r.notes || '';
+  document.getElementById('editImageInput').value = '';
+
+  // Photo preview
+  const prev = document.getElementById('editImagePreview');
+  const removeBtn = document.getElementById('editRemovePhoto');
+  const label = document.getElementById('editImgLabel');
+  if (r.image) {
+    prev.src = r.image;
+    prev.style.display = 'block';
+    removeBtn.style.display = 'block';
+    label.innerHTML = '<strong>✅ Foto vorhanden</strong><br>Antippen zum Ändern';
+  } else {
+    prev.style.display = 'none';
+    removeBtn.style.display = 'none';
+    label.innerHTML = '<strong>Foto antippen</strong><br>oder aus Galerie wählen';
+  }
+
+  // Categories
+  const grid = document.getElementById('editCatGrid');
+  grid.innerHTML = categories.map(c => `
+    <button class="cat-toggle ${(r.cats||[]).includes(c.id) ? 'selected' : ''}"
+      id="ect_${c.id}" onclick="toggleEditCat('${c.id}')">
+      ${c.emoji} ${c.name}
+    </button>`).join('');
+
+  document.getElementById('editModalOverlay').classList.add('open');
+}
+
+function toggleEditCat(id) {
+  const btn = document.getElementById('ect_' + id);
+  btn.classList.toggle('selected');
+}
+
+function handleEditImage(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    editImgData = ev.target.result;
+    const prev = document.getElementById('editImagePreview');
+    prev.src = editImgData;
+    prev.style.display = 'block';
+    document.getElementById('editRemovePhoto').style.display = 'block';
+    document.getElementById('editImgLabel').innerHTML = '<strong>✅ Foto gewählt!</strong><br>Antippen zum Ändern';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeEditPhoto() {
+  editImgData = null;
+  document.getElementById('editImagePreview').style.display = 'none';
+  document.getElementById('editRemovePhoto').style.display = 'none';
+  document.getElementById('editImgLabel').innerHTML = '<strong>Foto antippen</strong><br>oder aus Galerie wählen';
+  document.getElementById('editImageInput').value = '';
+}
+
+function saveEdit() {
+  const name = document.getElementById('editName').value.trim();
+  if (!name) { toast('❗ Bitte einen Namen eingeben!'); return; }
+
+  const selectedCatsEdit = [...document.querySelectorAll('#editCatGrid .cat-toggle.selected')]
+    .map(btn => btn.id.replace('ect_', ''));
+
+  const idx = recipes.findIndex(x => x.id === editingId);
+  if (idx === -1) return;
+
+  recipes[idx] = {
+    ...recipes[idx],
+    name,
+    link:  document.getElementById('editLink').value.trim(),
+    notes: document.getElementById('editNotes').value.trim(),
+    image: editImgData,
+    cats:  selectedCatsEdit,
+  };
+
+  save();
+  closeEditModal();
+  renderRecipes();
+  toast('✅ Rezept aktualisiert!');
+}
+
+function closeEditModal() {
+  document.getElementById('editModalOverlay').classList.remove('open');
+  editingId = null;
+  editImgData = null;
 }
 
 // ===== INIT =====
