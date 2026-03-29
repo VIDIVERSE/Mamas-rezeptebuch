@@ -65,16 +65,16 @@
   }
   .tab-btn {
     flex: 1;
-    padding: 14px 8px;
+    padding: 14px 4px;
     border: none;
     background: transparent;
     font-family: 'Lato', sans-serif;
-    font-size: 0.8rem;
+    font-size: 0.68rem;
     font-weight: 700;
     color: var(--muted);
     cursor: pointer;
     transition: all 0.2s;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     text-transform: uppercase;
     display: flex;
     flex-direction: column;
@@ -576,6 +576,9 @@
   <button class="tab-btn" onclick="showTab('kategorien')">
     <span class="icon">🏷️</span>Kategorien
   </button>
+  <button class="tab-btn" onclick="showTab('backup')">
+    <span class="icon">💾</span>Backup
+  </button>
 </div>
 
 <!-- ========== REZEPTE SCREEN ========== -->
@@ -647,6 +650,41 @@
   <div class="cat-list" id="catList"></div>
 </div>
 
+<!-- ========== BACKUP SCREEN ========== -->
+<div id="screen-backup" class="screen">
+
+  <div class="form-card" style="margin-bottom:16px">
+    <div class="form-title">📤 Backup speichern</div>
+    <p style="font-size:0.9rem;color:var(--muted);margin-bottom:18px;line-height:1.6">
+      Speichere alle deine Rezepte als Datei auf deinem Handy — als Sicherheitskopie oder um sie auf einem anderen Gerät zu laden.
+    </p>
+    <div style="background:var(--warm);border-radius:12px;padding:14px;margin-bottom:18px;font-size:0.85rem;color:var(--accent2);line-height:1.6">
+      📱 Die Datei wird in deinen <strong>Downloads</strong> gespeichert.
+    </div>
+    <button class="btn-primary" onclick="exportData()">📥 Backup-Datei herunterladen</button>
+    <div id="exportInfo" style="display:none;margin-top:12px;text-align:center;font-size:0.85rem;color:var(--green);font-weight:700"></div>
+  </div>
+
+  <div class="form-card" style="margin-bottom:16px">
+    <div class="form-title">📂 Backup laden</div>
+    <p style="font-size:0.9rem;color:var(--muted);margin-bottom:18px;line-height:1.6">
+      Lade eine vorher gespeicherte Backup-Datei. <strong>Achtung:</strong> Bestehende Rezepte werden dabei ergänzt — nichts wird gelöscht!
+    </p>
+    <div class="img-upload-area" id="importArea" style="border-color:var(--green)">
+      <input type="file" accept=".json" id="importInput" onchange="importData(event)">
+      <div class="upload-icon">📂</div>
+      <p><strong style="color:var(--green)">Backup-Datei auswählen</strong><br>Tippe hier um die Datei zu öffnen</p>
+    </div>
+    <div id="importInfo" style="display:none;margin-top:12px;text-align:center;font-size:0.85rem;font-weight:700"></div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-title">ℹ️ Deine Daten</div>
+    <div id="dataStats" style="font-size:0.9rem;color:var(--muted);line-height:2"></div>
+  </div>
+
+</div>
+
 <!-- RECIPE DETAIL MODAL -->
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
   <div class="modal" id="modalContent">
@@ -694,6 +732,7 @@ function showTab(name) {
   if (name === 'rezepte') renderRecipes();
   if (name === 'kategorien') renderCategories();
   if (name === 'hinzufuegen') renderCatSelect();
+  if (name === 'backup') renderDataStats();
 }
 
 // ===== TOAST =====
@@ -946,6 +985,102 @@ function deleteCategory(id) {
   save();
   renderCategories();
   toast('🗑️ Kategorie gelöscht');
+}
+
+// ===== EXPORT =====
+function exportData() {
+  const data = {
+    version: 1,
+    exportDatum: new Date().toLocaleDateString('de-DE'),
+    rezepte: recipes,
+    kategorien: categories
+  };
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const datum = new Date().toISOString().slice(0,10);
+  a.href     = url;
+  a.download = `meine-rezepte-backup-${datum}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  localStorage.setItem('lastBackup', new Date().toLocaleDateString('de-DE'));
+
+  const info = document.getElementById('exportInfo');
+  info.textContent = `✅ ${recipes.length} Rezept${recipes.length!==1?'e':''} gespeichert!`;
+  info.style.display = 'block';
+  setTimeout(() => info.style.display = 'none', 3000);
+  toast('📥 Backup heruntergeladen!');
+}
+
+// ===== IMPORT =====
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      const info = document.getElementById('importInfo');
+
+      // Validate
+      if (!data.rezepte || !Array.isArray(data.rezepte)) {
+        info.style.color = 'var(--accent)';
+        info.textContent = '❗ Ungültige Datei — bitte nur Backup-Dateien laden.';
+        info.style.display = 'block';
+        return;
+      }
+
+      // Merge recipes (avoid duplicates by id)
+      let added = 0;
+      data.rezepte.forEach(r => {
+        if (!recipes.find(x => x.id === r.id)) {
+          recipes.push(r);
+          added++;
+        }
+      });
+
+      // Merge categories (avoid duplicates by id)
+      if (data.kategorien && Array.isArray(data.kategorien)) {
+        data.kategorien.forEach(c => {
+          if (!categories.find(x => x.id === c.id)) {
+            categories.push(c);
+          }
+        });
+      }
+
+      save();
+      renderDataStats();
+      document.getElementById('importInput').value = '';
+
+      info.style.color = 'var(--green)';
+      info.textContent = `✅ ${added} neue Rezepte geladen!`;
+      info.style.display = 'block';
+      setTimeout(() => info.style.display = 'none', 3000);
+      toast(`✅ ${added} Rezepte importiert!`);
+
+    } catch(err) {
+      const info = document.getElementById('importInfo');
+      info.style.color = 'var(--accent)';
+      info.textContent = '❗ Fehler beim Lesen der Datei.';
+      info.style.display = 'block';
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ===== DATA STATS =====
+function renderDataStats() {
+  const el = document.getElementById('dataStats');
+  const withPhotos = recipes.filter(r => r.image).length;
+  const withLinks  = recipes.filter(r => r.link).length;
+  el.innerHTML = `
+    🍽️ <strong>${recipes.length}</strong> Rezepte gespeichert<br>
+    🏷️ <strong>${categories.length}</strong> Kategorien<br>
+    📸 <strong>${withPhotos}</strong> Rezepte mit Foto<br>
+    🔗 <strong>${withLinks}</strong> Rezepte mit Link<br>
+    📅 Letztes Backup: <strong>${localStorage.getItem('lastBackup') || 'noch keines'}</strong>
+  `;
 }
 
 // ===== INIT =====
